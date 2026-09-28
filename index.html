@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>손맛분식 고객응대 챗봇</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Inter & Noto Sans KR) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #FFF7ED; /* Warm light orange tint background */
+        }
+        /* Custom scrollbar for chat window */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #FFEDD5;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #FDBA74;
+            border-radius: 9999px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .chat-bubble {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen max-w-lg mx-auto bg-orange-50/55 shadow-2xl overflow-hidden">
+
+    <!-- Header: Store Info -->
+    <header class="bg-gradient-to-r from-orange-500 to-amber-600 text-white p-4 shadow-md flex items-center justify-between shrink-0">
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">🥟</span>
+                <h1 class="text-xl font-bold tracking-tight">손맛분식</h1>
+                <span class="text-xs bg-orange-700/60 px-2 py-0.5 rounded-full font-medium">달빛시장 3번 골목</span>
+            </div>
+            <p class="text-xs text-orange-100 mt-1 pl-8">⏰ 평일 10:00~20:00 (토요일 21시까지 / 일요일 휴무)</p>
+        </div>
+        <div class="text-right">
+            <span class="inline-block w-3 h-3 bg-emerald-400 rounded-full animate-pulse mr-1"></span>
+            <span class="text-xs text-orange-100 font-medium">영업중</span>
+        </div>
+    </header>
+
+    <!-- Chat Messages Container -->
+    <div id="chatContainer" class="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col">
+        <!-- Welcome Message -->
+        <div class="flex items-start gap-3 chat-bubble">
+            <div class="w-9 h-9 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow">
+                손맛
+            </div>
+            <div class="bg-white p-3.5 rounded-2xl rounded-tl-sm shadow-sm border border-orange-100 max-w-[80%] text-gray-800 text-sm leading-relaxed">
+                안녕하세요! 달빛시장 3번 골목 <strong>손맛분식</strong>입니다. 🥟<br>
+                궁금하신 점을 편하게 물어보세요! 아래 자주 묻는 질문을 누르셔도 답변해 드려요.
+            </div>
+        </div>
+    </div>
+
+    <!-- FAQ Quick Buttons (4 buttons as requested) -->
+    <div class="px-4 py-2 bg-orange-100/60 border-t border-orange-200/50 shrink-0">
+        <p class="text-xs font-semibold text-orange-800 mb-2">💡 자주 묻는 질문</p>
+        <div class="grid grid-cols-2 gap-2">
+            <button onclick="sendFAQ('영업시간이 어떻게 되나요?')" class="text-xs bg-white hover:bg-orange-50 text-orange-900 border border-orange-200 py-2 px-3 rounded-xl font-medium text-left transition shadow-sm truncate">
+                ⏰ 영업시간 및 휴무일
+            </button>
+            <button onclick="sendFAQ('메뉴랑 가격 알려주세요')" class="text-xs bg-white hover:bg-orange-50 text-orange-900 border border-orange-200 py-2 px-3 rounded-xl font-medium text-left transition shadow-sm truncate">
+                📜 대표 메뉴 및 가격
+            </button>
+            <button onclick="sendFAQ('포장이나 배달 되나요?')" class="text-xs bg-white hover:bg-orange-50 text-orange-900 border border-orange-200 py-2 px-3 rounded-xl font-medium text-left transition shadow-sm truncate">
+                🛍️ 포장 및 배달 문의
+            </button>
+            <button onclick="sendFAQ('주차할 곳 있나요?')" class="text-xs bg-white hover:bg-orange-50 text-orange-900 border border-orange-200 py-2 px-3 rounded-xl font-medium text-left transition shadow-sm truncate">
+                🚗 주차 안내
+            </button>
+        </div>
+    </div>
+
+    <!-- Input Bar -->
+    <div class="p-3 bg-white border-t border-orange-200 shrink-0">
+        <form id="chatForm" onsubmit="handleUserSubmit(event)" class="flex gap-2">
+            <input 
+                type="text" 
+                id="userInput" 
+                placeholder="궁금한 내용을 입력해 주세요 (예: 영업시간)" 
+                class="flex-1 bg-orange-50/50 border border-orange-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white text-gray-800 placeholder-gray-400 transition"
+                autocomplete="off"
+            >
+            <button 
+                type="submit" 
+                class="bg-orange-500 hover:bg-orange-600 text-white px-5 rounded-xl text-sm font-bold transition shadow-md active:scale-95 flex items-center justify-center shrink-0"
+            >
+                전송
+            </button>
+        </form>
+    </div>
+
+    <!-- JavaScript Logic & FAQ Database -->
+    <script>
+        // FAQ Dataset containing 10 exact questions & answers matching store criteria
+        const faqDatabase = [
+            {
+                keywords: ["몇시", "언제까지", "영업시간", "문 열", "마감", "시간", "휴무", "쉬는날", "일요일"],
+                question: "몇 시까지 하세요? / 영업시간",
+                answer: "평일은 10시부터 20시까지, 토요일은 21시까지입니다. 일요일은 쉽니다."
+            },
+            {
+                keywords: ["메뉴", "가격", "뭐가", "팔아", "음식", "분식", "떡볶이", "튀김", "김밥"],
+                question: "어떤 메뉴가 있고 가격은 얼마인가요?",
+                answer: "쌀떡볶이(4,000원), 수제모둠튀김(5,000원), 꼬마김밥(3,500원), 얼큰오뎅탕(6,000원) 등이 준비되어 있습니다!"
+            },
+            {
+                keywords: ["떡볶이", "1인분", "포장", "테이크아웃", "싸가", "가져가", "배달", "배달되나요", "퀵"],
+                question: "떡볶이 1인분 포장 되나요? / 포장이나 배달이 되나요?",
+                answer: "네! 떡볶이 1인분도 깔끔하게 포장해 드립니다. 모든 메뉴 포장 가능해요!"
+            },
+            {
+                keywords: ["주차", "차", "공간", "주차장", "차량"],
+                question: "주차할 공간이 있나요?",
+                answer: "시장 공영주차장을 이용하시면 편리합니다. 구매 고객분들께는 1시간 주차 할인권을 제공해 드려요."
+            },
+            {
+                keywords: ["위치", "어디", "찾아", "주소", "길", "골목"],
+                question: "가게 위치가 어디인가요?",
+                answer: "달빛시장 3번 골목 안쪽으로 들어오시면 주황색 간판의 '손맛분식'을 쉽게 찾으실 수 있습니다."
+            },
+            {
+                keywords: ["예약", "단체", "자리", "테이블"],
+                question: "단골 예약이나 매장 식사 자리가 있나요?",
+                answer: "매장 내에 아담한 4개 테이블이 마련되어 있습니다. 단체 방문이나 대량 포장은 미리 전화 주시면 빠르게 준비해 드릴게요!"
+            },
+            {
+                keywords: ["카드", "현금", "결제", "제로페이", "온누리", "상품권"],
+                question: "결제는 어떤 수단으로 가능한가요?",
+                answer: "신용카드, 모바일 간편결제뿐만 아니라 온누리 상품권 및 지역사랑상품권도 모두 사용하실 수 있습니다."
+            },
+            {
+                keywords: ["전화", "번호", "연락처", "문의"],
+                question: "가게 전화번호가 어떻게 되나요?",
+                answer: "가게 직통 전화번호는 02-555-8282입니다. 바쁠 때는 전화를 받기 어려울 수 있는 점 양해 부탁드려요!"
+            },
+            {
+                keywords: ["원산지", "재료", "쌀", "고추장", "김치"],
+                question: "재료 원산지가 어디인가요?",
+                answer: "떡볶이 쌀떡은 국내산 쌀 100%, 고추장은 태양초 고춧가루로 직접 담근 특제 양념을 사용하고 있습니다."
+            },
+            {
+                keywords: ["이벤트", "할인", "서비스", "쿠폰"],
+                question: "단골 이벤트나 서비스가 있나요?",
+                answer: "현장 방문 후 SNS나 리뷰를 남겨주시면 음료수 1캔을 서비스로 드리는 이벤트를 상시 진행 중입니다!"
+            }
+        ];
+
+        // Function to scroll chat to bottom
+        function scrollToBottom() {
+            const container = document.getElementById('chatContainer');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Add message to chat display
+        function addMessage(text, sender) {
+            const container = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            
+            if (sender === 'user') {
+                messageDiv.className = 'flex items-end justify-end gap-2 chat-bubble';
+                messageDiv.innerHTML = `
+                    <div class="bg-orange-500 text-white p-3.5 rounded-2xl rounded-tr-sm shadow-sm max-w-[80%] text-sm leading-relaxed">
+                        ${escapeHtml(text)}
+                    </div>
+                `;
+            } else {
+                messageDiv.className = 'flex items-start gap-3 chat-bubble';
+                messageDiv.innerHTML = `
+                    <div class="w-9 h-9 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow">
+                        손맛
+                    </div>
+                    <div class="bg-white p-3.5 rounded-2xl rounded-tl-sm shadow-sm border border-orange-100 max-w-[80%] text-gray-800 text-sm leading-relaxed">
+                        ${text}
+                    </div>
+                `;
+            }
+            
+            container.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        // Process user query against FAQ list
+        function getBotResponse(userQuery) {
+            const cleanQuery = userQuery.trim().toLowerCase();
+            let matchedAnswer = null;
+            let highestScore = 0;
+
+            // Score matching based on keyword hits
+            faqDatabase.forEach(item => {
+                let score = 0;
+                item.keywords.forEach(keyword => {
+                    if (cleanQuery.includes(keyword)) {
+                        score += keyword.length; // Longer matching keywords weigh more
+                    }
+                });
+                if (score > highestScore) {
+                    highestScore = score;
+                    matchedAnswer = item.answer;
+                }
+            });
+
+            // If threshold met, return best match; otherwise return the fallback sentence
+            if (highestScore > 0 && matchedAnswer) {
+                return matchedAnswer;
+            } else {
+                return "확인이 어렵습니다. 사장님께 직접 여쭤봐주세요";
+            }
+        }
+
+        // Handle form input submission
+        function handleUserSubmit(e) {
+            e.preventDefault();
+            const inputEl = document.getElementById('userInput');
+            const query = inputEl.value;
+            if (!query.trim()) return;
+
+            // Display user message
+            addMessage(query, 'user');
+            inputEl.value = '';
+
+            // Simulate slight natural typing delay before bot responds
+            setTimeout(() => {
+                const response = getBotResponse(query);
+                addMessage(response, 'bot');
+            }, 300);
+        }
+
+        // Quick FAQ button handler
+        function sendFAQ(questionText) {
+            addMessage(questionText, 'user');
+            setTimeout(() => {
+                const response = getBotResponse(questionText);
+                addMessage(response, 'bot');
+            }, 300);
+        }
+    </script>
+</body>
+</html>
